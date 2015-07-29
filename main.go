@@ -6,10 +6,10 @@ import (
 )
 
 /*
-CreateBootstrap returns a struct that will allow to bootstrap to an existing
+Create returns a struct that will allow to bootstrap to an existing
 Tinzenite network.
 */
-func CreateBootstrap(path, localPeerName string) (*Bootstrap, error) {
+func Create(path, localPeerName string) (*Bootstrap, error) {
 	if shared.IsTinzenite(path) {
 		return nil, shared.ErrIsTinzenite
 	}
@@ -41,11 +41,11 @@ func CreateBootstrap(path, localPeerName string) (*Bootstrap, error) {
 }
 
 /*
-LoadBootstrap tries to load the given directory as a bootstrap object, allowing
+Load tries to load the given directory as a bootstrap object, allowing
 it to connect to an existing network. NOTE: will fail if already connected to
 other peers!
 */
-func LoadBootstrap(path string) (*Bootstrap, error) {
+func Load(path string) (*Bootstrap, error) {
 	if !shared.IsTinzenite(path) {
 		return nil, shared.ErrNotTinzenite
 	}
