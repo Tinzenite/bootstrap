@@ -14,12 +14,17 @@ import (
 type chaninterface struct {
 	// reference back to Bootstrap
 	boot *Bootstrap
-	// model reference NOTE: once created it means that a bootstrap is in progress!
+	// model reference NOTE: once created it means that a bootstrap is in progress! Also it is CORRECT and DESIRED that the model is not stored between runs.
 	model *model.Model
+	// we need to remember all update messages so that we can apply them when received
+	messages map[string]*shared.UpdateMessage
 }
 
 func createChanInterface(boot *Bootstrap) *chaninterface {
-	return &chaninterface{boot: boot}
+	return &chaninterface{
+		boot:     boot,
+		model:    nil,
+		messages: make(map[string]*shared.UpdateMessage)}
 }
 
 func (c *chaninterface) OnNewConnection(address, message string) {
@@ -32,12 +37,10 @@ func (c *chaninterface) OnMessage(address, message string) {
 
 func (c *chaninterface) OnAllowFile(address, name string) (bool, string) {
 	filename := address + "." + name
-	log.Println("AllowFile: writing file as", filename, ".")
 	return true, c.boot.path + "/" + shared.TINZENITEDIR + "/" + shared.RECEIVINGDIR + "/" + filename
 }
 
 func (c *chaninterface) OnFileReceived(address, path, name string) {
-	log.Println("TODO: received", name, "at", path)
 	// split filename to get identification
 	check := strings.Split(name, ".")[0]
 	identification := strings.Split(name, ".")[1]
@@ -45,78 +48,97 @@ func (c *chaninterface) OnFileReceived(address, path, name string) {
 		log.Println("Filename is mismatched!")
 		return
 	}
+	// whether we allow accepting a file or model depends on whether we already have a model here...
 	if c.model != nil {
-		log.Println("Receiving file!")
-	} else {
-		log.Println("Receiving model!") // <-- should only be called once!
-	}
-	// if not model this is an update --> handle it
-	if identification != shared.IDMODEL {
-		log.Println("Doesn't seem to be a model, do special stuff!")
-		// rename to correct name for model
-		err := os.Rename(path, c.boot.path+"/"+shared.TINZENITEDIR+"/"+shared.TEMPDIR+"/"+identification)
-		if err != nil {
-			log.Println("Failed to move file to temp: " + err.Error())
+		// safe guard
+		if len(c.messages) == 0 {
+			log.Println("No update messages available! Ignoring file.")
 			return
 		}
-		// apply
-		log.Println("TODO need to store the updatemessages... sigh")
-		return
-		/*
-			obj := &shared.ObjectInfo{}
-			um := shared.CreateUpdateMessage(shared.OpCreate, *obj)
-			c.model.ApplyUpdateMessage(&um)
-			// done
+		log.Println("Receiving file!")
+		c.onFile(path, identification)
+	} else {
+		// safe guard
+		if identification != shared.IDMODEL {
+			log.Println("Excepting model! Ignoring file.")
 			return
-		*/
+		}
+		log.Println("Receiving model!") // <-- should only be called once!
+		err := c.onModel(address, path)
+		if err != nil {
+			log.Println("onModel:", err)
+		}
 	}
+}
+
+func (c *chaninterface) OnConnected(address string) {
+	log.Println("Connected:", address[:8])
+}
+
+// ---------------------- NO CALLBACKS BEYOND THIS POINT -----------------------
+
+func (c *chaninterface) onModel(address, path string) error {
 	// read model file and remove it
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Println("ReModel:", err)
-		return
+		return err
 	}
 	err = os.Remove(path)
 	if err != nil {
-		log.Println("ReModel:", err)
+		log.Println("Failed to remove temp model file:", err)
 		// not strictly critical so no return here
 	}
 	// unmarshal
 	foreignModel := &shared.ObjectInfo{}
 	err = json.Unmarshal(data, foreignModel)
 	if err != nil {
-		log.Println("ReModel:", err)
-		return
+		return err
 	}
 	// make a model of the local stuff
 	m, err := model.Create(c.boot.path, c.boot.peer.Identification)
 	if err != nil {
-		log.Println("ReModel:", err)
-		return
+		return err
 	}
 	c.model = m
 	// apply what is already here
 	err = c.model.Update()
 	if err != nil {
-		log.Println("ReModel:", err)
-		return
+		return err
 	}
 	// get difference in updates
 	var updateLists []*shared.UpdateMessage
 	updateLists, err = c.model.BootstrapModel(foreignModel)
 	if err != nil {
-		log.Println("ReModel:", err)
-		return
+		return err
 	}
+	log.Println("Need to fetch", len(updateLists), "updates.")
 	// pretend that the updatemessage came from outside here
 	for _, um := range updateLists {
+		// we have to remember the update messages because we'll need to apply them
+		c.messages[um.Object.Identification] = um
 		// create & modify must first fetch file
 		rm := shared.CreateRequestMessage(shared.ReObject, um.Object.Identification)
 		// request file and apply update on success
 		c.boot.channel.Send(address, rm.String())
 	}
+	return nil
 }
 
-func (c *chaninterface) OnConnected(address string) {
-	log.Println("Connected:", address[:8])
+func (c *chaninterface) onFile(path, identification string) error {
+	// see if we have a corresponding update message
+	um, exists := c.messages[identification]
+	if !exists {
+		log.Println("Can not apply file", identification, "!")
+		return os.Remove(path)
+	}
+	// remove from list since we're applying it
+	delete(c.messages, identification)
+	// rename to correct name for model
+	err := os.Rename(path, c.boot.path+"/"+shared.TINZENITEDIR+"/"+shared.TEMPDIR+"/"+identification)
+	if err != nil {
+		return err
+	}
+	// apply
+	return c.model.ApplyUpdateMessage(um)
+	/*TODO detect when done --> special case!*/
 }
