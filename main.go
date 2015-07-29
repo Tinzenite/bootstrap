@@ -1,3 +1,9 @@
+/*
+Package bootstrap implements the capability to connect to an existing and online
+Tinzenite peer network.
+
+TODO: add encryption bootstrap capabilities
+*/
 package bootstrap
 
 import (
@@ -7,7 +13,7 @@ import (
 
 /*
 Create returns a struct that will allow to bootstrap to an existing
-Tinzenite network.
+Tinzenite network. To actually start bootstrapping call Bootstrap.Start(address).
 */
 func Create(path, localPeerName string) (*Bootstrap, error) {
 	if shared.IsTinzenite(path) {
@@ -41,9 +47,9 @@ func Create(path, localPeerName string) (*Bootstrap, error) {
 }
 
 /*
-Load tries to load the given directory as a bootstrap object, allowing
-it to connect to an existing network. NOTE: will fail if already connected to
-other peers!
+Load tries to load the given directory as a bootstrap object, allowing it to
+connect to an existing network. To actually start bootstrapping call
+Bootstrap.Start(address). NOTE: will fail if already connected to other peers!
 
 TODO: strictly speaking we only need the selfpeer... look into this?
 */

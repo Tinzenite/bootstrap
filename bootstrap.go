@@ -1,6 +1,9 @@
 package bootstrap
 
 import (
+	"encoding/json"
+	"log"
+
 	"github.com/tinzenite/channel"
 	"github.com/tinzenite/shared"
 )
@@ -22,25 +25,36 @@ type Bootstrap struct {
 	bootstrap map[string]bool
 }
 
+/*
+Start begins a bootstrap process to the given address.
+*/
 func (b *Bootstrap) Start(address string) error {
-	/*
-		// send own peer
-		msg, err := json.Marshal(c.tin.selfpeer)
-		if err != nil {
-			return err
-		}
-		// send request
-		err = c.tin.channel.RequestConnection(address, string(msg))
-		if err != nil {
-			return err
-		}
-		// if request is sent successfully, remember for bootstrap
-		// format to legal address
-		address = strings.ToLower(address)[:64]
-		c.bootstrap[address] = true
-		return nil
-	*/
-	return shared.ErrUnsupported
+	// send own peer
+	msg, err := json.Marshal(b.peer)
+	if err != nil {
+		return err
+	}
+	// send request
+	return b.channel.RequestConnection(address, string(msg))
+}
+
+/*
+Check looks if the bootstrapped address is online and initiates the boostrap
+process.
+
+TODO: we can do this in the background... sigh
+*/
+func (b *Bootstrap) Check() {
+	addresses, err := b.channel.OnlineAddresses()
+	if err != nil {
+		log.Println("Check:", err)
+		return
+	}
+	if len(addresses) != 1 {
+		/*TODO pick one? Randomly?*/
+		log.Println("Multiple online!")
+	}
+	/*TODO start bootstrap*/
 }
 
 /*
