@@ -142,6 +142,17 @@ func (c *chaninterface) onFile(path, identification string) error {
 		return err
 	}
 	// apply
-	return c.model.ApplyUpdateMessage(um)
-	/*TODO detect when done --> special case!*/
+	err = c.model.ApplyUpdateMessage(um)
+	if err != nil {
+		return err
+	}
+	// detect when done to call success callback
+	if len(c.messages) == 0 {
+		log.Println("I think I'm done...")
+		c.boot.Close()
+		if c.boot.onDone != nil {
+			c.boot.onDone()
+		}
+	}
+	return nil
 }

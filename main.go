@@ -15,7 +15,7 @@ import (
 Create returns a struct that will allow to bootstrap to an existing
 Tinzenite network. To actually start bootstrapping call Bootstrap.Start(address).
 */
-func Create(path, localPeerName string) (*Bootstrap, error) {
+func Create(path, localPeerName string, f Success) (*Bootstrap, error) {
 	if shared.IsTinzenite(path) {
 		return nil, shared.ErrIsTinzenite
 	}
@@ -25,7 +25,9 @@ func Create(path, localPeerName string) (*Bootstrap, error) {
 		return nil, err
 	}
 	// create object
-	boot := &Bootstrap{path: path}
+	boot := &Bootstrap{
+		path:   path,
+		onDone: f}
 	boot.cInterface = createChanInterface(boot)
 	channel, err := channel.Create(localPeerName, nil, boot.cInterface)
 	if err != nil {
@@ -57,7 +59,7 @@ Bootstrap.Start(address). NOTE: will fail if already connected to other peers!
 
 TODO: strictly speaking we only need the selfpeer... look into this?
 */
-func Load(path string) (*Bootstrap, error) {
+func Load(path string, f Success) (*Bootstrap, error) {
 	if !shared.IsTinzenite(path) {
 		return nil, shared.ErrNotTinzenite
 	}
@@ -65,7 +67,9 @@ func Load(path string) (*Bootstrap, error) {
 		return nil, errNotBootstrapCapable
 	}
 	// create object
-	boot := &Bootstrap{path: path}
+	boot := &Bootstrap{
+		path:   path,
+		onDone: f}
 	boot.cInterface = createChanInterface(boot)
 	// load
 	toxPeerDump, err := shared.LoadToxDump(path)

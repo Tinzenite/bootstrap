@@ -12,6 +12,11 @@ import (
 )
 
 /*
+Success is the callback that will be called once the bootstrap is complete.
+*/
+type Success func()
+
+/*
 Bootstrap is a temporary peer object that allows to bootstrap into an existing
 Tinzenite network.
 */
@@ -26,6 +31,8 @@ type Bootstrap struct {
 	peer *shared.Peer
 	// stores address of peers we need to bootstrap
 	bootstrap map[string]bool
+	// callback for when done
+	onDone Success
 	// stuff for background thread
 	wg   sync.WaitGroup
 	stop chan bool
