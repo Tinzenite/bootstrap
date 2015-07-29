@@ -1,13 +1,26 @@
 package bootstrap
 
-import "github.com/tinzenite/shared"
+import (
+	"github.com/tinzenite/channel"
+	"github.com/tinzenite/shared"
+)
 
+/*
+Bootstrap is a temporary peer object that allows to bootstrap into an existing
+Tinzenite network.
+*/
 type Bootstrap struct {
+	// internal hidden struct for channel callbacks
+	cInterface *chaninterface
+	// tox communication channel
+	channel *channel.Channel
 	// stores address of peers we need to bootstrap
 	bootstrap map[string]bool
+	// self peer
+	peer shared.Peer
 }
 
-func StartBootstrap(address string) (*Bootstrap, error) {
+func (b *Bootstrap) Start(address string) error {
 	/*
 		// send own peer
 		msg, err := json.Marshal(c.tin.selfpeer)
@@ -25,16 +38,9 @@ func StartBootstrap(address string) (*Bootstrap, error) {
 		c.bootstrap[address] = true
 		return nil
 	*/
-	return nil, shared.ErrUnsupported
+	return shared.ErrUnsupported
 }
 
-/*
-OnConnected is called when a peer comes online. We check whether it requires
-bootstrapping, if not we do nothing.
-
-TODO: this is not called on friend request! FIXME: Maybe by implementing a special
-message?
-*/
 func (b *Bootstrap) OnConnected(address string) {
 	/*
 		_, exists := c.bootstrap[address]
