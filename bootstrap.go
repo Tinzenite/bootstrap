@@ -115,12 +115,21 @@ func (b *Bootstrap) Close() {
 Run is the background thread that keeps checking if it can bootstrap.
 */
 func (b *Bootstrap) run() {
+	online := false
+	var interval time.Duration
 	for {
+		// this ensures 2 different tick spans depending on whether someone is online or not
+		if online {
+			interval = tickSpanOnline
+		} else {
+			interval = tickSpanNone
+		}
 		select {
 		case <-b.stop:
 			b.wg.Done()
 			return
-		case <-time.Tick(tickSpan):
+		case <-time.Tick(interval):
+			online = false
 			addresses, err := b.channel.OnlineAddresses()
 			if err != nil {
 				log.Println("Check:", err)
@@ -133,6 +142,7 @@ func (b *Bootstrap) run() {
 			if len(addresses) > 1 {
 				log.Println("WARNING: Multiple online!")
 			}
+			online = true
 			// yo, we want to bootstrap!
 			rm := shared.CreateRequestMessage(shared.ReModel, shared.IDMODEL)
 			b.channel.Send(addresses[0], rm.String())

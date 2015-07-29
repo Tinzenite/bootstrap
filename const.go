@@ -5,7 +5,10 @@ import (
 	"time"
 )
 
-const tickSpan = 10 * time.Second
+const (
+	tickSpanNone   = 10 * time.Second
+	tickSpanOnline = 1 * time.Minute
+)
 
 var (
 	errNotBootstrapCapable = errors.New("can not bootstrap given peer")
