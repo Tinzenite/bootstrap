@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/tinzenite/channel"
@@ -84,4 +85,38 @@ func (b *Bootstrap) Store() error {
 		return err
 	}
 	return nil
+}
+
+/*
+PrintStatus returns a formatted string of the peer status.
+*/
+func (b *Bootstrap) PrintStatus() string {
+	var out string
+	out += "Online:\n"
+	addresses, err := b.channel.FriendAddresses()
+	if err != nil {
+		out += "channel.FriendAddresses failed!"
+	} else {
+		var count int
+		for _, address := range addresses {
+			online, err := b.channel.IsOnline(address)
+			var insert string
+			if err != nil {
+				insert = "ERROR"
+			} else {
+				insert = fmt.Sprintf("%v", online)
+			}
+			out += address[:16] + " :: " + insert + "\n"
+			count++
+		}
+		out += "Total friends: " + fmt.Sprintf("%d", count)
+	}
+	return out
+}
+
+/*
+Close cleanly closes everything underlying.
+*/
+func (b *Bootstrap) Close() {
+	b.channel.Close()
 }
