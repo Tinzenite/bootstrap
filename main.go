@@ -44,6 +44,8 @@ func Create(path, localPeerName string) (*Bootstrap, error) {
 Load tries to load the given directory as a bootstrap object, allowing
 it to connect to an existing network. NOTE: will fail if already connected to
 other peers!
+
+TODO: strictly speaking we only need the selfpeer... look into this?
 */
 func Load(path string) (*Bootstrap, error) {
 	if !shared.IsTinzenite(path) {
@@ -52,9 +54,21 @@ func Load(path string) (*Bootstrap, error) {
 	if !checkValidBootstrap(path) {
 		return nil, errNotBootstrapCapable
 	}
-	/*TODO check for one peer and channel stuff for success - this would allow
-	bootstrapping even non bootstrap directories.*/
-	return nil, shared.ErrUnsupported
+	// create object
+	boot := &Bootstrap{path: path}
+	boot.cInterface = createChanInterface(boot)
+	// load
+	toxPeerDump, err := shared.LoadToxDump(path)
+	if err != nil {
+		return nil, err
+	}
+	boot.peer = toxPeerDump.SelfPeer
+	channel, err := channel.Create(boot.peer.Name, toxPeerDump.ToxData, boot.cInterface)
+	if err != nil {
+		return nil, err
+	}
+	boot.channel = channel
+	return boot, nil
 }
 
 /*
