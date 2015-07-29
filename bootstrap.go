@@ -51,11 +51,16 @@ func (b *Bootstrap) Check() {
 		log.Println("Check:", err)
 		return
 	}
-	if len(addresses) != 1 {
+	if len(addresses) == 0 {
+		log.Println("None available yet.")
+		return
+	}
+	if len(addresses) > 1 {
 		/*TODO pick one? Randomly?*/
 		log.Println("Multiple online!")
 	}
 	/*TODO start bootstrap*/
+	log.Println("Okay, TODO")
 }
 
 /*
