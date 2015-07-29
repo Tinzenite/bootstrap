@@ -59,8 +59,9 @@ func (b *Bootstrap) Check() {
 		/*TODO pick one? Randomly?*/
 		log.Println("Multiple online!")
 	}
-	/*TODO start bootstrap*/
-	log.Println("Okay, TODO")
+	// yo, we want to bootstrap!
+	rm := shared.CreateRequestMessage(shared.ReModel, shared.IDMODEL)
+	b.channel.Send(addresses[0], rm.String())
 }
 
 /*
