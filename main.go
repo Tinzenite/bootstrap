@@ -43,6 +43,10 @@ func Create(path, localPeerName string) (*Bootstrap, error) {
 		return nil, err
 	}
 	boot.peer = peer
+	// bg stuff
+	boot.wg.Add(1)
+	boot.stop = make(chan bool, 1)
+	go boot.run()
 	return boot, nil
 }
 
@@ -74,6 +78,10 @@ func Load(path string) (*Bootstrap, error) {
 		return nil, err
 	}
 	boot.channel = channel
+	// bg stuff
+	boot.wg.Add(1)
+	boot.stop = make(chan bool, 1)
+	go boot.run()
 	return boot, nil
 }
 

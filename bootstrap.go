@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sync"
+	"time"
 
 	"github.com/tinzenite/channel"
 	"github.com/tinzenite/shared"
@@ -24,6 +26,9 @@ type Bootstrap struct {
 	peer *shared.Peer
 	// stores address of peers we need to bootstrap
 	bootstrap map[string]bool
+	// stuff for background thread
+	wg   sync.WaitGroup
+	stop chan bool
 }
 
 /*
@@ -37,31 +42,6 @@ func (b *Bootstrap) Start(address string) error {
 	}
 	// send request
 	return b.channel.RequestConnection(address, string(msg))
-}
-
-/*
-Check looks if the bootstrapped address is online and initiates the boostrap
-process.
-
-TODO: we can do this in the background... sigh
-*/
-func (b *Bootstrap) Check() {
-	addresses, err := b.channel.OnlineAddresses()
-	if err != nil {
-		log.Println("Check:", err)
-		return
-	}
-	if len(addresses) == 0 {
-		log.Println("None available yet.")
-		return
-	}
-	if len(addresses) > 1 {
-		/*TODO pick one? Randomly?*/
-		log.Println("Multiple online!")
-	}
-	// yo, we want to bootstrap!
-	rm := shared.CreateRequestMessage(shared.ReModel, shared.IDMODEL)
-	b.channel.Send(addresses[0], rm.String())
 }
 
 /*
@@ -124,5 +104,38 @@ func (b *Bootstrap) PrintStatus() string {
 Close cleanly closes everything underlying.
 */
 func (b *Bootstrap) Close() {
+	// send stop signal
+	b.stop <- false
+	// wait for it to close
+	b.wg.Wait()
 	b.channel.Close()
+}
+
+/*
+Run is the background thread that keeps checking if it can bootstrap.
+*/
+func (b *Bootstrap) run() {
+	for {
+		select {
+		case <-b.stop:
+			b.wg.Done()
+			return
+		case <-time.Tick(tickSpan):
+			addresses, err := b.channel.OnlineAddresses()
+			if err != nil {
+				log.Println("Check:", err)
+				break
+			}
+			if len(addresses) == 0 {
+				log.Println("None available yet.")
+				break
+			}
+			if len(addresses) > 1 {
+				log.Println("WARNING: Multiple online!")
+			}
+			// yo, we want to bootstrap!
+			rm := shared.CreateRequestMessage(shared.ReModel, shared.IDMODEL)
+			b.channel.Send(addresses[0], rm.String())
+		} // select
+	} // for
 }
