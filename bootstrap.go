@@ -3,6 +3,8 @@ package bootstrap
 import "github.com/tinzenite/shared"
 
 type Bootstrap struct {
+	// stores address of peers we need to bootstrap
+	bootstrap map[string]bool
 }
 
 func StartBootstrap(address string) (*Bootstrap, error) {
