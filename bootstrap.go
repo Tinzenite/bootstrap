@@ -52,6 +52,13 @@ func (b *Bootstrap) Start(address string) error {
 }
 
 /*
+Address returns the full address of this peer.
+*/
+func (b *Bootstrap) Address() (string, error) {
+	return b.channel.ConnectionAddress()
+}
+
+/*
 Store writes a bootstrapped .TINZENITEDIR to disk. Call this if you want
 persistant bootstrapping (and why wouldn't you?).
 */
