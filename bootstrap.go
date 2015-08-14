@@ -154,7 +154,8 @@ func (b *Bootstrap) run() {
 				break
 			}
 			if len(addresses) > 1 {
-				log.Println("WARNING: Multiple online!")
+				// since we'll always only try connecting to one, warn specifically!
+				log.Println("WARNING: Multiple online! Will try connecting to ", addresses[0][:16], " only.")
 			}
 			online = true
 			// yo, we want to bootstrap!

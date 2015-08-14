@@ -150,6 +150,12 @@ func (c *chaninterface) onFile(path, identification string) error {
 	if len(c.messages) == 0 {
 		log.Println("I think I'm done...")
 		c.boot.Close()
+		// write directory to DIRECTORYLIST because it is now a valid TINZENITEDIR
+		err := shared.WriteDirectoryList(c.boot.path)
+		if err != nil {
+			log.Println("Failed to write path to", shared.DIRECTORYLIST, "!")
+			// not a critical error but log in case clients can't find the dir
+		}
 		if c.boot.onDone != nil {
 			c.boot.onDone()
 		}
