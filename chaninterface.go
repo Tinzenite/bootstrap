@@ -160,5 +160,10 @@ func (c *chaninterface) onFile(path, identification string) error {
 			c.boot.onDone()
 		}
 	}
+	// TODO for some reason bootstrap never finishes, look into why!
+	log.Println("Still need to fetch", len(c.messages), "updates!")
+	for _, msg := range c.messages {
+		log.Println(msg.Object.Path)
+	}
 	return nil
 }
