@@ -32,7 +32,7 @@ func (c *chaninterface) OnNewConnection(address, message string) {
 }
 
 func (c *chaninterface) OnMessage(address, message string) {
-	log.Println("MSG from", address[:8], ":", message)
+	log.Println("Bootstrap received message from", address[:8], ":", message)
 }
 
 func (c *chaninterface) OnAllowFile(address, name string) (bool, string) {
@@ -56,7 +56,10 @@ func (c *chaninterface) OnFileReceived(address, path, name string) {
 			return
 		}
 		log.Println("Receiving file!")
-		c.onFile(path, identification)
+		err := c.onFile(path, identification)
+		if err != nil {
+			log.Println("onFile:", err)
+		}
 	} else {
 		// safe guard
 		if identification != shared.IDMODEL {
@@ -114,9 +117,20 @@ func (c *chaninterface) onModel(address, path string) error {
 	if err != nil {
 		return err
 	}
-	log.Println("Need to fetch", len(updateLists), "updates.")
+	log.Println("Need to apply", len(updateLists), "updates.")
 	// pretend that the updatemessage came from outside here
 	for _, um := range updateLists {
+		// directories can be applied directly
+		if um.Object.Directory {
+			// apply
+			// apply
+			err = c.model.ApplyUpdateMessage(um)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+		// files must be fetched first, so:
 		// we have to remember the update messages because we'll need to apply them
 		c.messages[um.Object.Identification] = um
 		// create & modify must first fetch file
@@ -148,7 +162,6 @@ func (c *chaninterface) onFile(path, identification string) error {
 	}
 	// detect when done to call success callback
 	if len(c.messages) == 0 {
-		log.Println("I think I'm done...")
 		c.boot.Close()
 		// write directory to DIRECTORYLIST because it is now a valid TINZENITEDIR
 		err := shared.WriteDirectoryList(c.boot.path)
@@ -156,8 +169,11 @@ func (c *chaninterface) onFile(path, identification string) error {
 			log.Println("Failed to write path to", shared.DIRECTORYLIST, "!")
 			// not a critical error but log in case clients can't find the dir
 		}
+		// notify of done
 		if c.boot.onDone != nil {
 			c.boot.onDone()
+		} else {
+			log.Println("onDone is nil!")
 		}
 	}
 	// TODO for some reason bootstrap never finishes, look into why!

@@ -123,6 +123,7 @@ func (b *Bootstrap) Close() {
 	// wait for it to close
 	b.wg.Wait()
 	b.channel.Close()
+	log.Println("Bootstrap closed.")
 }
 
 /*
