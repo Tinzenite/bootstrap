@@ -55,7 +55,6 @@ func (c *chaninterface) OnFileReceived(address, path, name string) {
 			log.Println("No update messages available! Ignoring file.")
 			return
 		}
-		log.Println("Receiving file!")
 		err := c.onFile(path, identification)
 		if err != nil {
 			log.Println("onFile:", err)
@@ -63,7 +62,7 @@ func (c *chaninterface) OnFileReceived(address, path, name string) {
 	} else {
 		// safe guard
 		if identification != shared.IDMODEL {
-			log.Println("Excepting model! Ignoring file.")
+			log.Println("Expecting model! Ignoring file.")
 			return
 		}
 		log.Println("Receiving model!") // <-- should only be called once!
@@ -162,6 +161,7 @@ func (c *chaninterface) onFile(path, identification string) error {
 	}
 	// detect when done to call success callback
 	if len(c.messages) == 0 {
+		log.Println("DEBUG: Trying to be done...")
 		c.boot.Close()
 		// write directory to DIRECTORYLIST because it is now a valid TINZENITEDIR
 		err := shared.WriteDirectoryList(c.boot.path)
@@ -176,10 +176,6 @@ func (c *chaninterface) onFile(path, identification string) error {
 			log.Println("onDone is nil!")
 		}
 	}
-	// TODO for some reason bootstrap never finishes, look into why!
-	log.Println("Still need to fetch", len(c.messages), "updates!")
-	for _, msg := range c.messages {
-		log.Println(msg.Object.Path)
-	}
+	log.Println("DEBUG: One file success!")
 	return nil
 }
