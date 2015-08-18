@@ -119,17 +119,19 @@ Close cleanly closes everything underlying.
 */
 func (b *Bootstrap) Close() {
 	// send stop signal
-	b.stop <- false
+	b.stop <- true
 	// wait for it to close
 	b.wg.Wait()
+	// finally close channel
+	// TODO FIXME Channel won't close...
 	b.channel.Close()
-	log.Println("Bootstrap closed.")
 }
 
 /*
 Run is the background thread that keeps checking if it can bootstrap.
 */
 func (b *Bootstrap) run() {
+	defer func() { log.Println("Bootstrap:", "Background process stopped.") }()
 	online := false
 	var interval time.Duration
 	for {

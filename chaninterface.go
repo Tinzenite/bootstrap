@@ -161,8 +161,6 @@ func (c *chaninterface) onFile(path, identification string) error {
 	}
 	// detect when done to call success callback
 	if len(c.messages) == 0 {
-		log.Println("DEBUG: Trying to be done...")
-		c.boot.Close()
 		// write directory to DIRECTORYLIST because it is now a valid TINZENITEDIR
 		err := shared.WriteDirectoryList(c.boot.path)
 		if err != nil {
@@ -175,7 +173,10 @@ func (c *chaninterface) onFile(path, identification string) error {
 		} else {
 			log.Println("onDone is nil!")
 		}
+		// TODO close has a problem: doesn't seem to return because channel won't close! FIXME
+		c.boot.Close()
+		// done so return nil
+		return nil
 	}
-	log.Println("DEBUG: One file success!")
 	return nil
 }
