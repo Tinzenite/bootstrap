@@ -173,8 +173,8 @@ func (c *chaninterface) onFile(path, identification string) error {
 		} else {
 			log.Println("onDone is nil!")
 		}
-		// TODO close has a problem: doesn't seem to return because channel won't close! FIXME
-		c.boot.Close()
+		/* NOTE: it is important that if the bootstrap was successful, DO NOT
+		CALL boot.Close() from within this method! */
 		// done so return nil
 		return nil
 	}
