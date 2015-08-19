@@ -123,7 +123,6 @@ func (b *Bootstrap) Close() {
 	// wait for it to close
 	b.wg.Wait()
 	// finally close channel
-	// TODO FIXME Channel won't close...
 	b.channel.Close()
 }
 
