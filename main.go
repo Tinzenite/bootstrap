@@ -7,6 +7,8 @@ TODO: add encryption bootstrap capabilities
 package bootstrap
 
 import (
+	"io/ioutil"
+
 	"github.com/tinzenite/channel"
 	"github.com/tinzenite/shared"
 )
@@ -98,9 +100,9 @@ func checkValidBootstrap(path string) bool {
 		return false
 	}
 	tinzenPath := path + "/" + shared.TINZENITEDIR
-	peerAmount, err := shared.CountFiles(tinzenPath + "/" + shared.ORGDIR + "/" + shared.PEERSDIR)
+	stats, err := ioutil.ReadDir(tinzenPath + "/" + shared.ORGDIR + "/" + shared.PEERSDIR)
 	if err != nil {
 		return false
 	}
-	return peerAmount == 1 && shared.FileExists(tinzenPath+"/"+shared.LOCALDIR+"/"+shared.SELFPEERJSON)
+	return len(stats) == 1 && shared.FileExists(tinzenPath+"/"+shared.LOCALDIR+"/"+shared.SELFPEERJSON)
 }
