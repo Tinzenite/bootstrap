@@ -121,10 +121,18 @@ func (c *chaninterface) onModel(address, path string) error {
 	for _, um := range updateLists {
 		// directories can be applied directly
 		if um.Object.Directory {
-			// apply
-			// apply
+			dirPath := m.Root + "/" + um.Object.Path
+			// if the dir doesn't exist, make it
+			if !shared.FileExists(dirPath) {
+				err := shared.MakeDirectory(dirPath)
+				if err != nil {
+					log.Println("Failed applying dir:", err)
+				}
+			}
+			// apply to model
 			err = c.model.ApplyUpdateMessage(um)
-			if err != nil {
+			// ignore merge conflicts as they are to be overwritten anyway
+			if err != nil && err != shared.ErrConflict {
 				return err
 			}
 			continue
@@ -156,7 +164,8 @@ func (c *chaninterface) onFile(path, identification string) error {
 	}
 	// apply
 	err = c.model.ApplyUpdateMessage(um)
-	if err != nil {
+	// ignore merge conflicts as they are to be overwritten anyway
+	if err != nil && err != shared.ErrConflict {
 		return err
 	}
 	// detect when done to call success callback
