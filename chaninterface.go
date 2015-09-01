@@ -112,7 +112,7 @@ func (c *chaninterface) onModel(address, path string) error {
 	}
 	// get difference in updates
 	var updateLists []*shared.UpdateMessage
-	updateLists, err = c.model.BootstrapModel(foreignModel)
+	updateLists, err = c.model.Bootstrap(foreignModel)
 	if err != nil {
 		return err
 	}
