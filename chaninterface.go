@@ -143,7 +143,7 @@ func (c *chaninterface) onModel(address, path string) error {
 		// create & modify must first fetch file
 		rm := shared.CreateRequestMessage(shared.ReObject, um.Object.Identification)
 		// request file and apply update on success
-		c.boot.channel.Send(address, rm.String())
+		c.boot.channel.Send(address, rm.JSON())
 	}
 	return nil
 }
