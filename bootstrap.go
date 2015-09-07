@@ -99,7 +99,7 @@ func (b *Bootstrap) PrintStatus() string {
 	} else {
 		var count int
 		for _, address := range addresses {
-			online, err := b.channel.IsOnline(address)
+			online, err := b.channel.IsAddressOnline(address)
 			var insert string
 			if err != nil {
 				insert = "ERROR"
