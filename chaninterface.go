@@ -76,6 +76,10 @@ func (c *chaninterface) OnFileReceived(address, path, name string) {
 	}
 }
 
+func (c *chaninterface) OnFileCanceled(address, path string) {
+	log.Println("File transfer was canceled by " + address[:8] + "!")
+}
+
 func (c *chaninterface) OnConnected(address string) {
 	log.Println("Connected:", address[:8])
 }
