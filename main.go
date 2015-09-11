@@ -74,7 +74,7 @@ func Load(path string, f Success) (*Bootstrap, error) {
 		onDone: f}
 	boot.cInterface = createChanInterface(boot)
 	// load
-	toxPeerDump, err := shared.LoadToxDump(path)
+	toxPeerDump, err := shared.LoadToxDumpFrom(path + "/" + shared.STORETOXDUMPDIR)
 	if err != nil {
 		return nil, err
 	}

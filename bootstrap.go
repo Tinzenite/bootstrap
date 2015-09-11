@@ -68,7 +68,7 @@ func (b *Bootstrap) Store() error {
 		return err
 	}
 	// write self peer
-	err = b.peer.Store(b.path)
+	err = b.peer.StoreTo(b.path + "/" + shared.STOREPEERDIR)
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func (b *Bootstrap) Store() error {
 	toxPeerDump := &shared.ToxPeerDump{
 		SelfPeer: b.peer,
 		ToxData:  toxData}
-	err = toxPeerDump.Store(b.path)
+	err = toxPeerDump.StoreTo(b.path + "/" + shared.STORETOXDUMPDIR)
 	if err != nil {
 		return err
 	}

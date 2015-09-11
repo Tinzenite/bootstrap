@@ -104,7 +104,7 @@ func (c *chaninterface) onModel(address, path string) error {
 		return err
 	}
 	// make a model of the local stuff
-	storePath := c.boot.path + "/" + shared.TINZENITEDIR + "/" + shared.LOCALDIR + "/" + shared.MODELJSON
+	storePath := c.boot.path + "/" + shared.TINZENITEDIR + "/" + shared.LOCALDIR
 	m, err := model.Create(c.boot.path, c.boot.peer.Identification, storePath)
 	if err != nil {
 		return err
