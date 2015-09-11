@@ -27,7 +27,7 @@ func createChanInterface(boot *Bootstrap) *chaninterface {
 		messages: make(map[string]*shared.UpdateMessage)}
 }
 
-func (c *chaninterface) OnNewConnection(address, message string) {
+func (c *chaninterface) OnFriendRequest(address, message string) {
 	log.Println("NewConnection:", address[:8], "ignoring!")
 }
 
