@@ -42,7 +42,7 @@ func Create(path, localPeerName string, f Success) (*Bootstrap, error) {
 		return nil, err
 	}
 	// make peer (at correct location!)
-	peer, err := shared.CreatePeer(localPeerName, address)
+	peer, err := shared.CreatePeer(localPeerName, address, false)
 	if err != nil {
 		return nil, err
 	}
