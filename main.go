@@ -104,5 +104,6 @@ func checkValidBootstrap(path string) bool {
 	if err != nil {
 		return false
 	}
-	return len(stats) == 1 && shared.FileExists(tinzenPath+"/"+shared.LOCALDIR+"/"+shared.SELFPEERJSON)
+	exists, _ := shared.FileExists(tinzenPath + "/" + shared.LOCALDIR + "/" + shared.SELFPEERJSON)
+	return len(stats) == 1 && exists
 }

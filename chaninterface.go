@@ -127,7 +127,7 @@ func (c *chaninterface) onModel(address, path string) error {
 		if um.Object.Directory {
 			dirPath := m.Root + "/" + um.Object.Path
 			// if the dir doesn't exist, make it
-			if !shared.FileExists(dirPath) {
+			if exists, _ := shared.DirectoryExists(dirPath); !exists {
 				err := shared.MakeDirectory(dirPath)
 				if err != nil {
 					log.Println("Failed applying dir:", err)
