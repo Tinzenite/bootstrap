@@ -146,7 +146,7 @@ func (c *chaninterface) onModel(address, path string) error {
 		// we have to remember the update messages because we'll need to apply them
 		c.messages[um.Object.Identification] = um
 		// create & modify must first fetch file
-		rm := shared.CreateRequestMessage(shared.ReObject, um.Object.Identification)
+		rm := shared.CreateRequestMessage(shared.OtObject, um.Object.Identification)
 		// request file and apply update on success
 		c.boot.channel.Send(address, rm.JSON())
 	}

@@ -161,7 +161,7 @@ func (b *Bootstrap) run() {
 			}
 			online = true
 			// yo, we want to bootstrap!
-			rm := shared.CreateRequestMessage(shared.ReModel, shared.IDMODEL)
+			rm := shared.CreateRequestMessage(shared.OtModel, shared.IDMODEL)
 			b.channel.Send(addresses[0], rm.JSON())
 		} // select
 	} // for
