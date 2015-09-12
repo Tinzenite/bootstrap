@@ -126,7 +126,7 @@ func (c *chaninterface) onModel(address, path string) error {
 	for _, um := range updateLists {
 		// directories can be applied directly
 		if um.Object.Directory {
-			dirPath := m.Root + "/" + um.Object.Path
+			dirPath := m.RootPath + "/" + um.Object.Path
 			// if the dir doesn't exist, make it
 			if exists, _ := shared.DirectoryExists(dirPath); !exists {
 				err := shared.MakeDirectory(dirPath)
