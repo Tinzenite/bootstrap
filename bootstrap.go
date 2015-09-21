@@ -18,7 +18,7 @@ type Success func()
 
 /*
 Bootstrap is a temporary peer object that allows to bootstrap into an existing
-Tinzenite network.
+Tinzenite network. NOTE: bootstrapping is only capable for now to trusted peers.
 */
 type Bootstrap struct {
 	// root path
