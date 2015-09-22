@@ -108,6 +108,14 @@ func (b *Bootstrap) PrintStatus() string {
 }
 
 /*
+IsTrusted can be used to read whether this bootstrap is creating an encrypted or
+a trusted peer.
+*/
+func (b *Bootstrap) IsTrusted() bool {
+	return b.peer.Trusted
+}
+
+/*
 Close cleanly closes everything underlying.
 */
 func (b *Bootstrap) Close() {
