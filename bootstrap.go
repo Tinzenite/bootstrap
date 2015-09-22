@@ -21,21 +21,14 @@ Bootstrap is a temporary peer object that allows to bootstrap into an existing
 Tinzenite network. NOTE: bootstrapping is only capable for now to trusted peers.
 */
 type Bootstrap struct {
-	// root path
-	path string
-	// internal hidden struct for channel callbacks
-	cInterface *chaninterface
-	// tox communication channel
-	channel *channel.Channel
-	// self peer
-	peer *shared.Peer
-	// stores address of peers we need to bootstrap
-	bootstrap map[string]bool
-	// callback for when done
-	onDone Success
-	// stuff for background thread
-	wg   sync.WaitGroup
-	stop chan bool
+	path       string           // root path
+	cInterface *chaninterface   // internal hidden struct for channel callbacks
+	channel    *channel.Channel // tox communication channel
+	peer       *shared.Peer     // self peer
+	bootstrap  map[string]bool  // stores address of peers we need to bootstrap
+	onDone     Success          // callback for when done
+	wg         sync.WaitGroup   // stuff for background thread
+	stop       chan bool        // stuff for background thread
 }
 
 /*
