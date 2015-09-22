@@ -158,9 +158,10 @@ func (b *Bootstrap) run() {
 			}
 			if len(addresses) > 1 {
 				// since we'll always only try connecting to one, warn specifically!
-				log.Println("WARNING: Multiple online! Will try connecting to ", addresses[0][:16], " only.")
+				log.Println("WARNING: Multiple online! Will try connecting to ", addresses[0][:8], " only.")
 			}
 			online = true
+			// TODO for encrypted: do nothing except prepare structure?
 			// yo, we want to bootstrap!
 			rm := shared.CreateRequestMessage(shared.OtModel, shared.IDMODEL)
 			b.channel.Send(addresses[0], rm.JSON())
