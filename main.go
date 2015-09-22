@@ -83,7 +83,7 @@ func Load(path string, f Success) (*Bootstrap, error) {
 	if trusted {
 		toxPeerDump, err = shared.LoadToxDumpFrom(path + "/" + shared.STORETOXDUMPDIR)
 	} else {
-		toxPeerDump, err = shared.LoadToxDumpFrom(path + "/" + shared.LOCALDIR + "/" + shared.SELFPEERJSON)
+		toxPeerDump, err = shared.LoadToxDumpFrom(path + "/" + shared.LOCALDIR)
 	}
 	if err != nil {
 		return nil, err
