@@ -14,10 +14,14 @@ import (
 )
 
 /*
-Create returns a struct that will allow to bootstrap to an existing
-Tinzenite network. To actually start bootstrapping call Bootstrap.Start(address).
+Create returns a struct that will allow to bootstrap to an existing Tinzenite
+network. To actually start bootstrapping call Bootstrap.Start(address).
+
+Path: the absolute path to the directory. localPeerName: the user defined name
+of this peer. trusted: whether this should be a trusted peer or an encrypted
+one. f: the callback to call once the bootstrap has successfully run.
 */
-func Create(path, localPeerName string, f Success) (*Bootstrap, error) {
+func Create(path, localPeerName string, trusted bool, f Success) (*Bootstrap, error) {
 	if shared.IsTinzenite(path) {
 		return nil, shared.ErrIsTinzenite
 	}
@@ -42,7 +46,7 @@ func Create(path, localPeerName string, f Success) (*Bootstrap, error) {
 		return nil, err
 	}
 	// make peer (at correct location!)
-	peer, err := shared.CreatePeer(localPeerName, address, true)
+	peer, err := shared.CreatePeer(localPeerName, address, trusted)
 	if err != nil {
 		return nil, err
 	}
@@ -58,8 +62,6 @@ func Create(path, localPeerName string, f Success) (*Bootstrap, error) {
 Load tries to load the given directory as a bootstrap object, allowing it to
 connect to an existing network. To actually start bootstrapping call
 Bootstrap.Start(address). NOTE: will fail if already connected to other peers!
-
-TODO: strictly speaking we only need the selfpeer... look into this?
 */
 func Load(path string, f Success) (*Bootstrap, error) {
 	if !shared.IsTinzenite(path) {
