@@ -56,12 +56,20 @@ Store writes a bootstrapped .TINZENITEDIR to disk. Call this if you want
 persistant bootstrapping (and why wouldn't you?).
 */
 func (b *Bootstrap) Store() error {
-	err := shared.MakeDotTinzenite(b.path)
+	trusted := b.IsTrusted()
+	var err error
+	if trusted {
+		err = shared.MakeTinzeniteDir(b.path)
+	} else {
+		err = shared.MakeEncryptedDir(b.path)
+	}
 	if err != nil {
 		return err
 	}
-	// write self peer
-	err = b.peer.StoreTo(b.path + "/" + shared.STOREPEERDIR)
+	// write self peer if TRUSTED peer. Encrypted don't write their own peer.
+	if trusted {
+		err = b.peer.StoreTo(b.path + "/" + shared.STOREPEERDIR)
+	}
 	if err != nil {
 		return err
 	}
@@ -73,7 +81,12 @@ func (b *Bootstrap) Store() error {
 	toxPeerDump := &shared.ToxPeerDump{
 		SelfPeer: b.peer,
 		ToxData:  toxData}
-	err = toxPeerDump.StoreTo(b.path + "/" + shared.STORETOXDUMPDIR)
+	// write toxpeerdump
+	if trusted {
+		err = toxPeerDump.StoreTo(b.path + "/" + shared.STORETOXDUMPDIR)
+	} else {
+		err = toxPeerDump.StoreTo(b.path + "/" + shared.LOCALDIR)
+	}
 	if err != nil {
 		return err
 	}
@@ -161,10 +174,30 @@ func (b *Bootstrap) run() {
 				log.Println("WARNING: Multiple online! Will try connecting to ", addresses[0][:8], " only.")
 			}
 			online = true
-			// TODO for encrypted: do nothing except prepare structure?
+			// if not trusted, we are done once the connection has been accepted.
+			if !b.IsTrusted() {
+				// execute callback
+				b.done()
+				// stop bg thread
+				b.stop <- false
+				// go quit
+				continue
+			}
 			// yo, we want to bootstrap!
 			rm := shared.CreateRequestMessage(shared.OtModel, shared.IDMODEL)
 			b.channel.Send(addresses[0], rm.JSON())
 		} // select
 	} // for
+}
+
+/*
+done is called to execute the callback (asynchroniously!)
+*/
+func (b *Bootstrap) done() {
+	// notify of done
+	if b.onDone != nil {
+		go b.onDone()
+	} else {
+		log.Println("onDone is nil!")
+	}
 }

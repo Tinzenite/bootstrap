@@ -7,8 +7,6 @@ TODO: add encryption bootstrap capabilities
 package bootstrap
 
 import (
-	"io/ioutil"
-
 	"github.com/tinzenite/channel"
 	"github.com/tinzenite/shared"
 )
@@ -26,7 +24,13 @@ func Create(path, localPeerName string, trusted bool, f Success) (*Bootstrap, er
 		return nil, shared.ErrIsTinzenite
 	}
 	// build structure
-	err := shared.MakeDotTinzenite(path)
+	var err error
+	if trusted {
+		err = shared.MakeTinzeniteDir(path)
+	} else {
+		err = shared.MakeEncryptedDir(path)
+	}
+	// creation of structure error
 	if err != nil {
 		return nil, err
 	}
@@ -64,19 +68,23 @@ connect to an existing network. To actually start bootstrapping call
 Bootstrap.Start(address). NOTE: will fail if already connected to other peers!
 */
 func Load(path string, f Success) (*Bootstrap, error) {
-	if !shared.IsTinzenite(path) {
-		return nil, shared.ErrNotTinzenite
-	}
-	if !checkValidBootstrap(path) {
-		return nil, errNotBootstrapCapable
+	// we need to do some logic to detect where we can load stuff from
+	trusted, err := isLoadable(path)
+	if err != nil {
+		return nil, err
 	}
 	// create object
 	boot := &Bootstrap{
 		path:   path,
 		onDone: f}
 	boot.cInterface = createChanInterface(boot)
-	// load
-	toxPeerDump, err := shared.LoadToxDumpFrom(path + "/" + shared.STORETOXDUMPDIR)
+	// load self peer from correct location
+	var toxPeerDump *shared.ToxPeerDump
+	if trusted {
+		toxPeerDump, err = shared.LoadToxDumpFrom(path + "/" + shared.STORETOXDUMPDIR)
+	} else {
+		toxPeerDump, err = shared.LoadToxDumpFrom(path + "/" + shared.LOCALDIR + "/" + shared.SELFPEERJSON)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -94,18 +102,21 @@ func Load(path string, f Success) (*Bootstrap, error) {
 }
 
 /*
-checkValidBootstrap from given path. To be valid: must be .TINZENITEDIR, must
-have only one peer (hopefully itself), and local/self.json must exit.
+isLoadable returns an error if not loadable. The flag returns whether it is the
+dir for a TRUSTED peer (so false if encrypted).
 */
-func checkValidBootstrap(path string) bool {
-	if !shared.IsTinzenite(path) {
-		return false
+func isLoadable(path string) (bool, error) {
+	// we check based on available paths
+	tinPath := path + "/" + shared.TINZENITEDIR + "/" + shared.LOCALDIR
+	encPath := path + "/" + shared.LOCALDIR
+	// first check if .tinzenite (so that visible dirs of enc won't cause false detection)
+	if exists, _ := shared.DirectoryExists(tinPath); exists {
+		return true, nil
 	}
-	tinzenPath := path + "/" + shared.TINZENITEDIR
-	stats, err := ioutil.ReadDir(tinzenPath + "/" + shared.ORGDIR + "/" + shared.PEERSDIR)
-	if err != nil {
-		return false
+	// second check if encrypted
+	if exists, _ := shared.DirectoryExists(encPath); exists {
+		return false, nil
 	}
-	exists, _ := shared.FileExists(tinzenPath + "/" + shared.LOCALDIR + "/" + shared.SELFPEERJSON)
-	return len(stats) == 1 && exists
+	// if neither we're done, so say encrypted but error
+	return false, shared.ErrNotTinzenite
 }

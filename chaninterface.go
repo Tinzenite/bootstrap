@@ -181,12 +181,8 @@ func (c *chaninterface) onFile(path, identification string) error {
 			log.Println("Failed to write path to", shared.DIRECTORYLIST, "!")
 			// not a critical error but log in case clients can't find the dir
 		}
-		// notify of done
-		if c.boot.onDone != nil {
-			c.boot.onDone()
-		} else {
-			log.Println("onDone is nil!")
-		}
+		// execute callback
+		c.boot.done()
 		/* NOTE: it is important that if the bootstrap was successful, DO NOT
 		CALL boot.Close() from within this method! */
 		// done so return nil
