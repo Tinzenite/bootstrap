@@ -67,7 +67,12 @@ func (c *chaninterface) OnMessage(address, message string) {
 func (c *chaninterface) OnAllowFile(address, name string) (bool, string) {
 	// we accept all files!
 	filename := address + "." + name
-	return true, c.boot.path + "/" + shared.TINZENITEDIR + "/" + shared.RECEIVINGDIR + "/" + filename
+	// if trusted write to hidden dir
+	if c.boot.IsTrusted() {
+		return true, c.boot.path + "/" + shared.TINZENITEDIR + "/" + shared.RECEIVINGDIR + "/" + filename
+	}
+	// encrypted is written to visible dir
+	return true, c.boot.path + "/" + shared.RECEIVINGDIR + "/" + filename
 }
 
 func (c *chaninterface) OnFileReceived(address, path, name string) {
