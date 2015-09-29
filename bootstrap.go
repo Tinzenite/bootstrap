@@ -18,7 +18,8 @@ type Success func()
 
 /*
 Bootstrap is a temporary peer object that allows to bootstrap into an existing
-Tinzenite network. NOTE: bootstrapping is only capable for now to trusted peers.
+Tinzenite network. Also it is CORRECT and DESIRED that a model for a trusted peer
+is not stored between runs to allow resetting if something goes wrong.
 */
 type Bootstrap struct {
 	path       string           // root path
@@ -174,17 +175,15 @@ func (b *Bootstrap) run() {
 				log.Println("WARNING: Multiple online! Will try connecting to ", addresses[0][:8], " only.")
 			}
 			online = true
-			// if not trusted, we are done once the connection has been accepted.
-			if !b.IsTrusted() {
-				// execute callback
-				b.done()
-				// stop bg thread
-				b.stop <- false
-				// go quit
+			// if trusted request the model and wait for files to start coming
+			if b.IsTrusted() {
+				// yo, we want to bootstrap!
+				rm := shared.CreateRequestMessage(shared.OtModel, shared.IDMODEL)
+				b.channel.Send(addresses[0], rm.JSON())
 				continue
 			}
-			// yo, we want to bootstrap!
-			rm := shared.CreateRequestMessage(shared.OtModel, shared.IDMODEL)
+			// if encrypted notify that we want the peers
+			rm := shared.CreateRequestMessage(shared.OtPeer, "")
 			b.channel.Send(addresses[0], rm.JSON())
 		} // select
 	} // for

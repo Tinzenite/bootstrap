@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"log"
 	"os"
@@ -12,19 +13,18 @@ import (
 )
 
 type chaninterface struct {
-	// reference back to Bootstrap
-	boot *Bootstrap
-	// model reference NOTE: once created it means that a bootstrap is in progress! Also it is CORRECT and DESIRED that the model is not stored between runs.
-	model *model.Model
-	// we need to remember all update messages so that we can apply them when received
-	messages map[string]*shared.UpdateMessage
+	boot     *Bootstrap                       // reference back to Bootstrap
+	model    *model.Model                     // model reference for trusted Bootstrap
+	messages map[string]*shared.UpdateMessage // we need to remember all update messages so that we can apply them when received
+	pushes   map[string]string                // push messages as identification with the associated name to store the peers as
 }
 
 func createChanInterface(boot *Bootstrap) *chaninterface {
 	return &chaninterface{
 		boot:     boot,
-		model:    nil,
-		messages: make(map[string]*shared.UpdateMessage)}
+		model:    nil, // NOTE: once created it means that a bootstrap is in progress!
+		messages: make(map[string]*shared.UpdateMessage),
+		pushes:   make(map[string]string)}
 }
 
 func (c *chaninterface) OnFriendRequest(address, message string) {
@@ -32,10 +32,40 @@ func (c *chaninterface) OnFriendRequest(address, message string) {
 }
 
 func (c *chaninterface) OnMessage(address, message string) {
-	log.Println("Bootstrap received message from", address[:8], ":", message)
+	// trusted are not expected to send any messages
+	if c.boot.IsTrusted() {
+		log.Println("Bootstrap received message from", address[:8], ":", message)
+		return
+	}
+	// encrypted can receive push messages however
+	v := &shared.Message{}
+	err := json.Unmarshal([]byte(message), v)
+	// if error most likely not JSON
+	if err != nil {
+		log.Println("Bootstrap received message from", address[:8], ":", message)
+		return
+	}
+	// make sure only push is allowed
+	if v.Type != shared.MsgPush {
+		log.Println("Bootstrap received invalid message:", v.Type)
+		return
+	}
+	// read push message
+	pm := &shared.PushMessage{}
+	err = json.Unmarshal([]byte(message), pm)
+	if err != nil {
+		log.Println("Bootstrap failed to read push message:", err.Error())
+		return
+	}
+	// as soon as we received a valid push message we can stop notifying the peer
+	c.boot.stop <- false
+	// store in map by identification (length also signals when we are done)
+	c.pushes[pm.Identification] = pm.Name
+	// now wait for the files to be received...
 }
 
 func (c *chaninterface) OnAllowFile(address, name string) (bool, string) {
+	// we accept all files!
 	filename := address + "." + name
 	return true, c.boot.path + "/" + shared.TINZENITEDIR + "/" + shared.RECEIVINGDIR + "/" + filename
 }
@@ -46,6 +76,14 @@ func (c *chaninterface) OnFileReceived(address, path, name string) {
 	identification := strings.Split(name, ".")[1]
 	if check != address {
 		log.Println("Filename is mismatched!")
+		return
+	}
+	// different behaviour if we are bootstrapping an encrypted peer
+	if !c.boot.IsTrusted() {
+		err := c.onPeerFile(path, identification)
+		if err != nil {
+			log.Println("Failed to apply received peer!", err.Error())
+		}
 		return
 	}
 	// whether we allow accepting a file or model depends on whether we already have a model here...
@@ -187,6 +225,30 @@ func (c *chaninterface) onFile(path, identification string) error {
 		CALL boot.Close() from within this method! */
 		// done so return nil
 		return nil
+	}
+	return nil
+}
+
+/*
+onPeerFile handles the reception of a peer file. If all peers for which push
+messages have been received have been fully received this also finishes the
+bootstrap.
+*/
+func (c *chaninterface) onPeerFile(path, identification string) error {
+	// retrieve name from pushes
+	name, exists := c.pushes[identification]
+	if !exists {
+		return errors.New("no name for identification found")
+	}
+	// move file to correct location, named correctly
+	err := os.Rename(path, c.boot.path+"/"+shared.ORGDIR+"/"+shared.PEERSDIR+"/"+name)
+	if err != nil {
+		return err
+	}
+	// check if we're done
+	if len(c.pushes) == 0 {
+		// this means we're done!
+		c.boot.done()
 	}
 	return nil
 }
