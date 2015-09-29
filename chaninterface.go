@@ -65,6 +65,8 @@ func (c *chaninterface) OnMessage(address, message string) {
 }
 
 func (c *chaninterface) OnAllowFile(address, name string) (bool, string) {
+	// TODO check and warn if not tracked however!
+	log.Println("DEBUG: TODO: add check for pushmessage if not trusted!")
 	// we accept all files!
 	filename := address + "." + name
 	// if trusted write to hidden dir
@@ -245,6 +247,8 @@ func (c *chaninterface) onPeerFile(path, identification string) error {
 	if !exists {
 		return errors.New("no name for identification found")
 	}
+	// if exists remove it since we'll handle it now
+	delete(c.pushes, identification)
 	// move file to correct location, named correctly
 	err := os.Rename(path, c.boot.path+"/"+shared.ORGDIR+"/"+shared.PEERSDIR+"/"+name)
 	if err != nil {
@@ -255,5 +259,6 @@ func (c *chaninterface) onPeerFile(path, identification string) error {
 		// this means we're done!
 		c.boot.done()
 	}
+	log.Println("DEBUG: applied, remaining:", len(c.pushes))
 	return nil
 }
