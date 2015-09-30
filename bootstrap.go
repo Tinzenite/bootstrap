@@ -193,6 +193,11 @@ func (b *Bootstrap) run() {
 done is called to execute the callback (asynchroniously!)
 */
 func (b *Bootstrap) done() {
+	// make sure background thread is done but if channel is blocked go on
+	select {
+	case b.stop <- false:
+	default:
+	}
 	// notify of done
 	if b.onDone != nil {
 		go b.onDone()

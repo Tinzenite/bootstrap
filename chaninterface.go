@@ -16,7 +16,7 @@ type chaninterface struct {
 	boot     *Bootstrap                       // reference back to Bootstrap
 	model    *model.Model                     // model reference for trusted Bootstrap
 	messages map[string]*shared.UpdateMessage // we need to remember all update messages so that we can apply them when received
-	pushes   map[string]string                // push messages as identification with the associated name to store the peers as
+	pushes   map[string]*shared.PushMessage   // push messages as identification with the associated name to store the peers as
 }
 
 func createChanInterface(boot *Bootstrap) *chaninterface {
@@ -24,7 +24,7 @@ func createChanInterface(boot *Bootstrap) *chaninterface {
 		boot:     boot,
 		model:    nil, // NOTE: once created it means that a bootstrap is in progress!
 		messages: make(map[string]*shared.UpdateMessage),
-		pushes:   make(map[string]string)}
+		pushes:   make(map[string]*shared.PushMessage)}
 }
 
 func (c *chaninterface) OnFriendRequest(address, message string) {
@@ -45,6 +45,10 @@ func (c *chaninterface) OnMessage(address, message string) {
 		log.Println("Bootstrap received message from", address[:8], ":", message)
 		return
 	}
+	// if loading peers takes longer, trusted will keep trying to lock, so silently ignore for bootstrap
+	if v.Type == shared.MsgLock {
+		return
+	}
 	// make sure only push is allowed
 	if v.Type != shared.MsgPush {
 		log.Println("Bootstrap received invalid message:", v.Type)
@@ -57,24 +61,28 @@ func (c *chaninterface) OnMessage(address, message string) {
 		log.Println("Bootstrap failed to read push message:", err.Error())
 		return
 	}
-	// as soon as we received a valid push message we can stop notifying the peer
-	c.boot.stop <- false
-	// store in map by identification (length also signals when we are done)
-	c.pushes[pm.Identification] = pm.Name
+	// store in map by key (length also signals when we are done)
+	key := c.buildKey(address, pm.Identification)
+	c.pushes[key] = pm
 	// now wait for the files to be received...
 }
 
 func (c *chaninterface) OnAllowFile(address, name string) (bool, string) {
-	// TODO check and warn if not tracked however!
-	log.Println("DEBUG: TODO: add check for pushmessage if not trusted!")
 	// we accept all files!
-	filename := address + "." + name
+	key := c.buildKey(address, name)
+	fileName := address + "." + name
 	// if trusted write to hidden dir
 	if c.boot.IsTrusted() {
-		return true, c.boot.path + "/" + shared.TINZENITEDIR + "/" + shared.RECEIVINGDIR + "/" + filename
+		return true, c.boot.path + "/" + shared.TINZENITEDIR + "/" + shared.RECEIVINGDIR + "/" + fileName
+	}
+	// check and warn if not tracked
+	_, exists := c.pushes[key]
+	if !exists {
+		log.Println("WARNING: file wasn't pushed, ignoring!", key)
+		return false, ""
 	}
 	// encrypted is written to visible dir
-	return true, c.boot.path + "/" + shared.RECEIVINGDIR + "/" + filename
+	return true, c.boot.path + "/" + shared.RECEIVINGDIR + "/" + fileName
 }
 
 func (c *chaninterface) OnFileReceived(address, path, name string) {
@@ -87,7 +95,10 @@ func (c *chaninterface) OnFileReceived(address, path, name string) {
 	}
 	// different behaviour if we are bootstrapping an encrypted peer
 	if !c.boot.IsTrusted() {
-		err := c.onPeerFile(path, identification)
+		// build key to give to method
+		key := c.buildKey(address, identification)
+		// call
+		err := c.onPeerFile(path, key)
 		if err != nil {
 			log.Println("Failed to apply received peer!", err.Error())
 		}
@@ -123,6 +134,10 @@ func (c *chaninterface) OnFileReceived(address, path, name string) {
 
 func (c *chaninterface) OnFileCanceled(address, path string) {
 	log.Println("File transfer was canceled by " + address[:8] + "!")
+	// if encrypted remove from pushes
+	if !c.boot.IsTrusted() {
+		log.Println("DEBUG: TODO: remove from pushes")
+	}
 }
 
 func (c *chaninterface) OnConnected(address string) {
@@ -241,16 +256,16 @@ onPeerFile handles the reception of a peer file. If all peers for which push
 messages have been received have been fully received this also finishes the
 bootstrap.
 */
-func (c *chaninterface) onPeerFile(path, identification string) error {
+func (c *chaninterface) onPeerFile(path, key string) error {
 	// retrieve name from pushes
-	name, exists := c.pushes[identification]
+	pm, exists := c.pushes[key]
 	if !exists {
 		return errors.New("no name for identification found")
 	}
 	// if exists remove it since we'll handle it now
-	delete(c.pushes, identification)
-	// move file to correct location, named correctly
-	err := os.Rename(path, c.boot.path+"/"+shared.ORGDIR+"/"+shared.PEERSDIR+"/"+name)
+	delete(c.pushes, key)
+	// move file to correct location, named correctly (note: this means we don't have to remove it)
+	err := os.Rename(path, c.boot.path+"/"+shared.ORGDIR+"/"+shared.PEERSDIR+"/"+pm.Name)
 	if err != nil {
 		return err
 	}
@@ -259,6 +274,12 @@ func (c *chaninterface) onPeerFile(path, identification string) error {
 		// this means we're done!
 		c.boot.done()
 	}
-	log.Println("DEBUG: applied, remaining:", len(c.pushes))
 	return nil
+}
+
+/*
+buildKey builds a unique string value for the given parameters.
+*/
+func (c *chaninterface) buildKey(address string, identification string) string {
+	return address + ":" + identification
 }
