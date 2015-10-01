@@ -18,7 +18,8 @@ type Success func()
 
 /*
 Bootstrap is a temporary peer object that allows to bootstrap into an existing
-Tinzenite network. NOTE: bootstrapping is only capable for now to trusted peers.
+Tinzenite network. Also it is CORRECT and DESIRED that a model for a trusted peer
++is not stored between runs to allow resetting if something goes wrong.
 */
 type Bootstrap struct {
 	path       string           // root path
@@ -194,6 +195,11 @@ func (b *Bootstrap) run() {
 done is called to execute the callback (asynchroniously!)
 */
 func (b *Bootstrap) done() {
+	// make sure background thread is done but if channel is blocked go on
+	select {
+	case b.stop <- true:
+	default:
+	}
 	// notify of done
 	if b.onDone != nil {
 		go b.onDone()
