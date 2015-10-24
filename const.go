@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	tickSpanNone   = 10 * time.Second
+	tickSpanResend = 11 * time.Second
+	tickSpanNone   = 7 * time.Second
 	tickSpanOnline = 1 * time.Minute
 )
 

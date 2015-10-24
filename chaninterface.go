@@ -6,25 +6,33 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/tinzenite/model"
 	"github.com/tinzenite/shared"
 )
 
 type chaninterface struct {
-	// reference back to Bootstrap
-	boot *Bootstrap
-	// model reference NOTE: once created it means that a bootstrap is in progress! Also it is CORRECT and DESIRED that the model is not stored between runs.
-	model *model.Model
-	// we need to remember all update messages so that we can apply them when received
-	messages map[string]*shared.UpdateMessage
+	boot        *Bootstrap                       // reference back to Bootstrap
+	sendAddress string                           // address of connected peer as soon as messages arrive
+	model       *model.Model                     // model reference NOTE: once created it means that a bootstrap is in progress! Also it is CORRECT and DESIRED that the model is not stored between runs.
+	messages    map[string]*shared.UpdateMessage // we need to remember all update messages so that we can apply them when received
+	wg          sync.WaitGroup                   // stuff for background thread
+	stop        chan bool                        // stuff for background thread
+	mutex       sync.Mutex                       // required for map of update messages
 }
 
 func createChanInterface(boot *Bootstrap) *chaninterface {
-	return &chaninterface{
+	cinterface := &chaninterface{
 		boot:     boot,
 		model:    nil,
 		messages: make(map[string]*shared.UpdateMessage)}
+	// start bg thread for trying to resend
+	cinterface.stop = make(chan bool, 1)
+	cinterface.wg.Add(1)
+	go cinterface.run()
+	return cinterface
 }
 
 func (c *chaninterface) OnFriendRequest(address, message string) {
@@ -36,6 +44,7 @@ func (c *chaninterface) OnMessage(address, message string) {
 }
 
 func (c *chaninterface) OnAllowFile(address, name string) (bool, string) {
+	log.Println("DEBUG: allowing", name)
 	filename := address + "." + name
 	return true, c.boot.path + "/" + shared.TINZENITEDIR + "/" + shared.RECEIVINGDIR + "/" + filename
 }
@@ -81,6 +90,8 @@ func (c *chaninterface) OnFileCanceled(address, path string) {
 }
 
 func (c *chaninterface) OnConnected(address string) {
+	// remember which peer we are connected to so that we know to whom to send our requests
+	c.sendAddress = address
 	log.Println("Connected:", address[:8])
 }
 
@@ -142,18 +153,16 @@ func (c *chaninterface) onModel(address, path string) error {
 			}
 			continue
 		}
-		// files must be fetched first, so:
-		// we have to remember the update messages because we'll need to apply them
+		// write update messages which must be fetched
 		c.messages[um.Object.Identification] = um
-		// create & modify must first fetch file
-		rm := shared.CreateRequestMessage(shared.OtObject, um.Object.Identification)
-		// request file and apply update on success
-		c.boot.channel.Send(address, rm.JSON())
 	}
 	return nil
 }
 
 func (c *chaninterface) onFile(path, identification string) error {
+	// on receiving a file we work on the map, so lock for duration of function
+	c.mutex.Lock()
+	defer func() { c.mutex.Unlock() }()
 	// see if we have a corresponding update message
 	um, exists := c.messages[identification]
 	if !exists {
@@ -181,6 +190,11 @@ func (c *chaninterface) onFile(path, identification string) error {
 			log.Println("Failed to write path to", shared.DIRECTORYLIST, "!")
 			// not a critical error but log in case clients can't find the dir
 		}
+		// finish our own bg thread
+		log.Println("DEBUG: stop resend!")
+		c.stop <- true
+		c.wg.Wait()
+		log.Println("DEBUG: stopped resend, all ok.")
 		// execute callback
 		c.boot.done()
 		/* NOTE: it is important that if the bootstrap was successful, DO NOT
@@ -189,4 +203,54 @@ func (c *chaninterface) onFile(path, identification string) error {
 		return nil
 	}
 	return nil
+}
+
+func (c *chaninterface) run() {
+	// resend every so often
+	resendTicker := time.Tick(tickSpanResend)
+	for {
+		select {
+		case <-c.stop:
+			c.wg.Done()
+			return
+		case <-resendTicker:
+			c.sendOutstandingRequest(c.sendAddress)
+		} // select
+	} // for
+}
+
+/*
+sendOutstandingRequest sends all request messages for update messages that have
+not yet been applied. This ensures that no files are missed and the bootstrap
+successfully completes.
+*/
+func (c *chaninterface) sendOutstandingRequest(address string) {
+	// if no address given nothing to do so return immediately
+	if address == "" {
+		return
+	}
+	// lock and unlock map access for this function
+	c.mutex.Lock()
+	defer func() { c.mutex.Unlock() }()
+	// determine messages available
+	amount := len(c.messages)
+	// if all have been applied this method can stop
+	if amount == 0 {
+		log.Println("DEBUG: nothing to request!")
+		return
+	}
+	// send requests
+	log.Println("Requesting", amount, "files.")
+	for _, um := range c.messages {
+		// make sure we don't request directories
+		if um.Object.Directory {
+			log.Println("WARNING: trying to request directory, ignoring!")
+			continue
+		}
+		// prepare request file
+		rm := shared.CreateRequestMessage(shared.OtObject, um.Object.Identification)
+		// send request file
+		c.boot.channel.Send(address, rm.JSON())
+	}
+	log.Println("DEBUG: send is DONE")
 }
