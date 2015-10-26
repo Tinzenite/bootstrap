@@ -75,7 +75,7 @@ func (c *chaninterface) OnFileReceived(address, path, name string) {
 			return
 		}
 		log.Println("Receiving model!") // <-- should only be called once!
-		// no need to keep sending check in backgronud
+		// no need to keep sending check in background
 		c.boot.stop <- false
 		// go due it
 		err := c.onModel(address, path)

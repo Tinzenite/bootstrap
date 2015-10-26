@@ -146,21 +146,13 @@ Run is the background thread that keeps checking if it can bootstrap.
 */
 func (b *Bootstrap) run() {
 	defer func() { log.Println("Bootstrap:", "Background process stopped.") }()
-	online := false
-	var interval time.Duration
+	waitTicker := time.Tick(tickSpanNone)
 	for {
-		// this ensures 2 different tick spans depending on whether someone is online or not
-		if online {
-			interval = tickSpanOnline
-		} else {
-			interval = tickSpanNone
-		}
 		select {
 		case <-b.stop:
 			b.wg.Done()
 			return
-		case <-time.Tick(interval):
-			online = false
+		case <-waitTicker:
 			addresses, err := b.channel.OnlineAddresses()
 			if err != nil {
 				log.Println("Check:", err)
@@ -174,7 +166,6 @@ func (b *Bootstrap) run() {
 				// since we'll always only try connecting to one, warn specifically!
 				log.Println("WARNING: Multiple online! Will try connecting to ", addresses[0][:8], " only.")
 			}
-			online = true
 			// if not trusted, we are done once the connection has been accepted.
 			if !b.IsTrusted() {
 				// execute callback
@@ -184,6 +175,7 @@ func (b *Bootstrap) run() {
 				// go quit
 				continue
 			}
+			log.Println("Initiating transfer of directory state.")
 			// yo, we want to bootstrap!
 			rm := shared.CreateRequestMessage(shared.OtModel, shared.IDMODEL)
 			b.channel.Send(addresses[0], rm.JSON())
