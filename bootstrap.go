@@ -133,11 +133,14 @@ func (b *Bootstrap) IsTrusted() bool {
 Close cleanly closes everything underlying.
 */
 func (b *Bootstrap) Close() {
-	// send stop signal
-	b.stop <- true
-	// wait for it to close
-	b.wg.Wait()
-	// finally close channel
+	// ensure that bg thread was closed
+	select {
+	case b.stop <- true:
+		b.wg.Wait()
+	default:
+		// if closing doesn't work we've probably already closed it
+	}
+	// close channel
 	b.channel.Close()
 }
 
@@ -184,7 +187,7 @@ func (b *Bootstrap) run() {
 }
 
 /*
-done is called to execute the callback (asynchroniously!)
+done is called to execute the callback synchroniously and handle other things.
 */
 func (b *Bootstrap) done() {
 	// make sure background thread is done but if channel is blocked go on
@@ -192,9 +195,15 @@ func (b *Bootstrap) done() {
 	case b.stop <- true:
 	default:
 	}
+	// store up to date tox information
+	err := b.Store()
+	if err != nil {
+		log.Println("Failed to store:", err)
+		// warn but continue to execute everything
+	}
 	// notify of done
 	if b.onDone != nil {
-		go b.onDone()
+		b.onDone()
 	} else {
 		log.Println("onDone is nil!")
 	}

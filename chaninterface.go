@@ -44,7 +44,6 @@ func (c *chaninterface) OnMessage(address, message string) {
 }
 
 func (c *chaninterface) OnAllowFile(address, name string) (bool, string) {
-	log.Println("DEBUG: allowing", name)
 	filename := address + "." + name
 	return true, c.boot.path + "/" + shared.TINZENITEDIR + "/" + shared.RECEIVINGDIR + "/" + filename
 }
@@ -191,10 +190,9 @@ func (c *chaninterface) onFile(path, identification string) error {
 			// not a critical error but log in case clients can't find the dir
 		}
 		// finish our own bg thread
-		log.Println("DEBUG: stop resend!")
 		c.stop <- true
 		c.wg.Wait()
-		log.Println("DEBUG: stopped resend, all ok.")
+		log.Println("Resend completed successfully.")
 		// execute callback
 		c.boot.done()
 		/* NOTE: it is important that if the bootstrap was successful, DO NOT
@@ -236,7 +234,7 @@ func (c *chaninterface) sendOutstandingRequest(address string) {
 	amount := len(c.messages)
 	// if all have been applied this method can stop
 	if amount == 0 {
-		log.Println("DEBUG: nothing to request!")
+		log.Println("WARNING: nothing to request!")
 		return
 	}
 	// send requests
@@ -252,5 +250,4 @@ func (c *chaninterface) sendOutstandingRequest(address string) {
 		// send request file
 		c.boot.channel.Send(address, rm.JSON())
 	}
-	log.Println("DEBUG: send is DONE")
 }
